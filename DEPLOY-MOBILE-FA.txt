@@ -1,0 +1,39 @@
+راهنمای خیلی ساده راه‌اندازی پارتاک
+
+پیشنهاد این نسخه: Cloudflare Pages + D1 + Pages Functions.
+
+مرحله 1: حساب Cloudflare
+- یک حساب Cloudflare بساز.
+- دامنه partakshop.ir را فقط اگر واقعاً مالک آن هستی به حساب اضافه کن.
+
+مرحله 2: ساخت D1
+- Workers & Pages > D1 > Create database
+- نام: partakshop-db
+- ID دیتابیس را کپی کن.
+- در wrangler.toml مقدار REPLACE_WITH_YOUR_D1_DATABASE_ID را با همان ID عوض کن.
+
+مرحله 3: ساخت پروژه Pages
+- Workers & Pages > Create > Pages > Connect to Git
+- فایل‌های این پوشه را در یک GitHub repository قرار بده.
+- پروژه را به Pages وصل کن.
+- چون Functions داریم، از Direct Upload ساده استفاده نکن؛ Cloudflare می‌گوید Direct Upload برای Functions پشتیبانی نمی‌شود.
+
+مرحله 4: migration
+با Wrangler:
+  npx wrangler d1 migrations apply partakshop-db --remote
+
+مرحله 5: کلید مدیر
+در Pages > Settings > Variables and Secrets یک Secret بساز:
+  ADMIN_KEY = یک عبارت طولانی و تصادفی
+
+مرحله 6: دامنه
+در Pages/Workers دامنه سفارشی را اضافه کن. برای Worker/Pages، Cloudflare امکان اتصال Custom Domain و صدور SSL را مدیریت می‌کند.
+
+مرحله 7: پنل
+بعد از آنلاین شدن:
+  https://partakshop.ir/admin.html
+
+نکته مهم:
+- پرداخت آنلاین هنوز متصل نیست.
+- SMS/Email هنوز متصل نیست.
+- قبل از فروش واقعی باید قوانین کسب‌وکار، حریم خصوصی، مرجوعی و مالیات/الزامات محلی بررسی شود.

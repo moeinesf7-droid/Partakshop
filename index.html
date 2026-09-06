@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>پارتاک | فروشگاه آنلاین</title>
+<meta name="description" content="فروشگاه آنلاین پارتاک؛ لوازم آرایشی و لباس زیر زنانه">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="top">ارسال سریع • پشتیبانی پارتاک • پرداخت امن</div>
+<header>
+  <button class="menu" onclick="toggleMenu()">☰</button>
+  <a class="logo" href="#">پارتاک <small>PARTAK</small></a>
+  <div class="actions">
+    <button onclick="openFavorites()">♡ <span id="favCount">0</span></button>
+    <button onclick="openCart()">🛍 <span id="cartCount">0</span></button>
+  </div>
+</header>
+<nav id="nav">
+  <a href="#home">خانه</a><a href="#categories">دسته‌بندی‌ها</a><a href="#products">محصولات</a>
+  <a href="#orders">پیگیری سفارش</a><a href="#contact">تماس با ما</a>
+</nav>
+
+<main>
+<section id="home" class="hero">
+  <div><span class="badge">فروشگاه رسمی پارتاک</span>
+  <h1>زیبایی را با انتخابی خاص تجربه کن</h1>
+  <p>لوازم آرایشی، مراقبت پوست، عطر و لباس زیر زنانه.</p>
+  <a class="primary" href="#products">خرید محصولات</a></div>
+  <div class="hero-card"><b>PARTAK</b><span>BEAUTY • LINGERIE</span></div>
+</section>
+
+<section id="categories" class="section">
+<h2>دسته‌بندی‌ها</h2>
+<div class="cats">
+<button onclick="setCategory('آرایش صورت')">💄<span>آرایش صورت</span></button>
+<button onclick="setCategory('پوست و مراقبت')">🧴<span>پوست و مراقبت</span></button>
+<button onclick="setCategory('چشم و ابرو')">👁️<span>چشم و ابرو</span></button>
+<button onclick="setCategory('لباس زیر زنانه')">♢<span>لباس زیر زنانه</span></button>
+<button onclick="setCategory('عطر و ادکلن')">🌸<span>عطر و ادکلن</span></button>
+</div></section>
+
+<section id="products" class="section">
+<div class="section-head"><h2>محصولات</h2><button onclick="setCategory('همه')">همه</button></div>
+<div class="tools"><input id="search" placeholder="جستجوی محصول..." oninput="renderProducts()"></div>
+<div id="grid" class="grid"></div>
+</section>
+
+<section id="orders" class="section order-track">
+<h2>پیگیری سفارش</h2>
+<p>کد سفارش خود را وارد کن.</p>
+<div><input id="trackCode" placeholder="مثلاً PT-1001"><button class="primary" onclick="trackOrder()">پیگیری</button></div>
+<div id="trackResult"></div>
+</section>
+
+<section id="contact" class="contact">
+<h2>پارتاک</h2><p>فروشگاه آنلاین لوازم آرایشی و لباس زیر زنانه</p>
+<p>این نسخه برای اتصال به سرور، دیتابیس، درگاه پرداخت و پیامک آماده‌سازی شده است.</p>
+</section>
+</main>
+
+<div id="toast"></div>
+<div id="cart" class="overlay" onclick="if(event.target.id==='cart')closeCart()">
+<div class="modal"><button class="x" onclick="closeCart()">×</button><h2>سبد خرید</h2><div id="cartItems"></div>
+<div class="total">مجموع: <b id="total">۰ تومان</b></div>
+<button class="primary wide" onclick="checkout()">ادامه و ثبت اطلاعات سفارش</button></div></div>
+
+<div id="checkout" class="overlay" onclick="if(event.target.id==='checkout')closeCheckout()">
+<div class="modal"><button class="x" onclick="closeCheckout()">×</button><h2>ثبت سفارش</h2>
+<form onsubmit="submitOrder(event)">
+<input id="customerName" required placeholder="نام و نام خانوادگی">
+<input id="customerPhone" required inputmode="tel" placeholder="شماره موبایل">
+<textarea id="customerAddress" required placeholder="آدرس کامل"></textarea>
+<select id="payment"><option value="cod">پرداخت هنگام تحویل (آزمایشی)</option><option value="online">پرداخت آنلاین (پس از اتصال درگاه)</option></select>
+<button class="primary wide">ثبت سفارش</button></form>
+<p class="note">پرداخت آنلاین در این نسخه هنوز به درگاه بانکی متصل نیست.</p>
+</div></div>
+
+<script src="script.js"></script>
+</body></html>
