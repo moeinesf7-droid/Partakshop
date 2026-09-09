@@ -1,5 +1,6 @@
 (() => {
   let key = '';
+  let editingId = null;
 
   const $ = (id) => document.getElementById(id);
 
@@ -17,6 +18,7 @@
     });
 
     let data = null;
+
     try {
       data = await res.json();
     } catch (_) {}
@@ -39,6 +41,7 @@
       $('loginMsg').style.color = '#18864b';
 
       return true;
+
     } catch (err) {
       $('panel').hidden = true;
       $('loginMsg').textContent = 'خطا: ' + err.message;
@@ -60,45 +63,101 @@
 
     $('sales').textContent =
       orders
-        .reduce((sum, order) => sum + Number(order.total || 0), 0)
+        .reduce(
+          (sum, order) => sum + Number(order.total || 0),
+          0
+        )
         .toLocaleString('fa-IR');
 
     $('products').innerHTML =
-      products.map(p => `
-        <div class="product">
-          <span>
-            ${p.icon || '🛍️'}
-            <b>${p.name}</b><br>
-            <small>
-              ${p.cat} • ${money(p.price)} تومان
-            </small>
-          </span>
+      products.map(p => {
 
-          <button type="button" data-delete="${p.id}">
-            حذف
-          </button>
-        </div>
-      `).join('') || '<p>محصولی نیست.</p>';
+        const oldPrice = Number(p.old_price || 0);
+        const currentPrice = Number(p.price || 0);
+
+        return `
+          <div class="product" style="margin-bottom:12px">
+
+            <span>
+              ${p.icon ? p.icon + ' ' : ''}
+
+              <b>${escapeHtml(p.name)}</b>
+
+              <br>
+
+              <small>
+                ${escapeHtml(p.cat)}
+              </small>
+
+              <br>
+
+              ${
+                oldPrice > currentPrice
+                  ? `
+                    <small style="text-decoration:line-through;color:#999">
+                      ${money(oldPrice)} تومان
+                    </small>
+                    <br>
+                  `
+                  : ''
+              }
+
+              <b>
+                ${money(currentPrice)} تومان
+              </b>
+            </span>
+
+            <span>
+
+              <button
+                type="button"
+                data-edit="${p.id}"
+              >
+                ✏️ ویرایش
+              </button>
+
+              <button
+                type="button"
+                data-delete="${p.id}"
+              >
+                🗑️ حذف
+              </button>
+
+            </span>
+
+          </div>
+        `;
+      }).join('') || '<p>محصولی نیست.</p>';
 
     $('orders').innerHTML =
       orders.map(o => `
         <div class="product">
+
           <span>
-            <b>${o.code}</b> — ${o.name}<br>
+
+            <b>${escapeHtml(o.code)}</b>
+            — ${escapeHtml(o.name)}
+
+            <br>
 
             <small>
-              ${o.phone} •
-              ${money(o.total)} تومان •
-              ${o.status}
+              ${escapeHtml(o.phone)}
+              •
+              ${money(o.total)} تومان
+              •
+              ${escapeHtml(o.status)}
             </small>
 
             <br>
 
-            <small>${o.address}</small>
+            <small>
+              ${escapeHtml(o.address)}
+            </small>
 
             <br>
 
-            <select data-status="${o.code}">
+            <select data-status="${escapeHtml(o.code)}">
+
               ${[
                 'در انتظار بررسی',
                 'در حال آماده‌سازی',
@@ -109,10 +168,15 @@
               ].map(status => `
                 <option
                   ${o.status === status ? 'selected' : ''}
-                >${status}</option>
+                >
+                  ${status}
+                </option>
               `).join('')}
+
             </select>
+
           </span>
+
         </div>
       `).join('') || '<p>سفارشی نیست.</p>';
 
@@ -120,6 +184,13 @@
       .forEach(button => {
         button.addEventListener('click', () => {
           deleteProduct(button.dataset.delete);
+        });
+      });
+
+    document.querySelectorAll('[data-edit]')
+      .forEach(button => {
+        button.addEventListener('click', () => {
+          editProduct(button.dataset.edit, products);
         });
       });
 
@@ -134,16 +205,137 @@
       });
   }
 
+  function editProduct(id, products) {
+    const product =
+      products.find(p => String(p.id) === String(id));
+
+    if (!product) return;
+
+    editingId = product.id;
+
+    $('name').value = product.name || '';
+    $('cat').value = product.cat || '';
+    $('price').value = product.price || '';
+    $('icon').value = product.icon || '';
+
+    ensureOldPriceField();
+
+    $('old_price').value =
+      product.old_price || '';
+
+    const submitButton =
+      document.querySelector('#form button');
+
+    if (submitButton) {
+      submitButton.textContent = 'ذخیره تغییرات';
+    }
+
+    const cancel =
+      document.getElementById('cancelEdit');
+
+    if (cancel) {
+      cancel.hidden = false;
+    }
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  function ensureOldPriceField() {
+    if ($('old_price')) return;
+
+    const priceInput = $('price');
+
+    if (!priceInput) return;
+
+    const input = document.createElement('input');
+
+    input.id = 'old_price';
+    input.type = 'number';
+    input.min = '0';
+    input.placeholder = 'قیمت قبلی (اختیاری)';
+
+    priceInput.parentNode.insertBefore(
+      input,
+      priceInput.nextSibling
+    );
+  }
+
+  function cancelEdit() {
+    editingId = null;
+
+    $('form').reset();
+
+    const submitButton =
+      document.querySelector('#form button');
+
+    if (submitButton) {
+      submitButton.textContent = 'افزودن';
+    }
+
+    const cancel =
+      document.getElementById('cancelEdit');
+
+    if (cancel) {
+      cancel.hidden = true;
+    }
+  }
+
+  async function saveProduct() {
+    ensureOldPriceField();
+
+    const body = {
+      name: $('name').value,
+      cat: $('cat').value,
+      price: Number($('price').value),
+      old_price: $('old_price').value,
+      icon: $('icon').value
+    };
+
+    if (editingId !== null) {
+      body.id = editingId;
+
+      await api('/api/products', {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+    } else {
+
+      await api('/api/products', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    }
+
+    cancelEdit();
+
+    await load();
+  }
+
   async function deleteProduct(id) {
     if (!confirm('این محصول حذف شود؟')) return;
 
     try {
+
       await api(
-        '/api/products?id=' + encodeURIComponent(id),
-        { method: 'DELETE' }
+        '/api/products?id=' +
+        encodeURIComponent(id),
+        {
+          method: 'DELETE'
+        }
       );
 
       await load();
+
     } catch (err) {
       alert('خطا: ' + err.message);
     }
@@ -151,11 +343,14 @@
 
   async function statusChange(code, status) {
     try {
+
       await api('/api/orders', {
         method: 'PATCH',
+
         headers: {
           'content-type': 'application/json'
         },
+
         body: JSON.stringify({
           code,
           status
@@ -163,19 +358,31 @@
       });
 
       await load();
+
     } catch (err) {
       alert('خطا: ' + err.message);
     }
   }
 
-  // دکمه ورود
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   window.login = async function () {
+
     key = $('adminKey').value.trim();
 
     if (!key) {
       $('loginMsg').textContent =
         'کلید مدیر را وارد کنید.';
+
       $('loginMsg').style.color = '#c62828';
+
       return;
     }
 
@@ -194,41 +401,51 @@
     if (button) button.disabled = false;
   };
 
-  // فرم افزودن محصول
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener(
+    'DOMContentLoaded',
+    () => {
 
-    const form = $('form');
+      const form = $('form');
 
-    if (!form) return;
+      if (!form) return;
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+      ensureOldPriceField();
 
-      try {
-        await api('/api/products', {
-          method: 'POST',
+      const cancelButton =
+        document.createElement('button');
 
-          headers: {
-            'content-type': 'application/json'
-          },
+      cancelButton.type = 'button';
+      cancelButton.id = 'cancelEdit';
+      cancelButton.textContent = 'لغو ویرایش';
+      cancelButton.hidden = true;
 
-          body: JSON.stringify({
-            name: $('name').value,
-            cat: $('cat').value,
-            price: Number($('price').value),
-            icon: $('icon').value
-          })
-        });
+      cancelButton.addEventListener(
+        'click',
+        cancelEdit
+      );
 
-        form.reset();
+      form.appendChild(cancelButton);
 
-        await load();
+      form.addEventListener(
+        'submit',
+        async (e) => {
 
-      } catch (err) {
-        alert('خطا: ' + err.message);
-      }
-    });
+          e.preventDefault();
 
-  });
+          try {
+
+            await saveProduct();
+
+          } catch (err) {
+
+            alert('خطا: ' + err.message);
+
+          }
+
+        }
+      );
+
+    }
+  );
 
 })();
