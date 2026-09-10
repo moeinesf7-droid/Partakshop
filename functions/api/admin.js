@@ -13,7 +13,7 @@ export async function onRequestGet({ request, env }) {
   `).all();
 
   const products = await env.DB.prepare(`
-    SELECT id,name,cat,price,icon
+    SELECT id,name,cat,price,old_price,icon
     FROM products
     WHERE active=1
     ORDER BY id DESC
