@@ -206,6 +206,34 @@
   }
 
   function editProduct(id, products) {
+  const product = products.find(p => Number(p.id) === Number(id));
+  if (!product) return;
+
+  $('name').value = product.name || '';
+  $('cat').value = product.cat || '';
+
+  ensureOldPriceField();
+
+  // قیمت جدید باید خالی باشد
+  $('price').value = '';
+
+  // قیمت فعلی محصول برود داخل قیمت قبلی
+  $('old_price').value = product.price || '';
+
+  $('icon').value = product.icon || '';
+
+  editingId = product.id;
+
+  const btn = document.querySelector('#form button');
+  if (btn) btn.textContent = 'ذخیره تغییرات';
+
+  arrangePriceFields();
+
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
+  }
     const product =
       products.find(p => String(p.id) === String(id));
 
