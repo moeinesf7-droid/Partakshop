@@ -13,19 +13,13 @@
 
 <h1>پنل مدیریت پارتاک</h1>
 
-<p>
-پس از استقرار روی سرور، این پنل به دیتابیس آنلاین متصل می‌شود.
-</p>
+<p>پس از استقرار روی سرور، این پنل به دیتابیس آنلاین متصل می‌شود.</p>
 
 <section class="box">
 
 <h2>ورود مدیر</h2>
 
-<input
-  id="adminKey"
-  type="password"
-  placeholder="کلید مدیر"
->
+<input id="adminKey" type="password" placeholder="کلید مدیر">
 
 <button onclick="login()">ورود</button>
 
@@ -55,63 +49,32 @@
 
 </div>
 
-
 <section class="box">
 
 <h2>افزودن محصول</h2>
 
 <form id="form">
 
-<label for="name">نام محصول</label>
-<input
-  id="name"
-  required
-  placeholder="مثلاً عطر زنانه پارتاک"
->
+<label>نام محصول</label>
+<input id="name" required placeholder="نام محصول">
 
+<label>دسته‌بندی</label>
+<input id="cat" required placeholder="دسته‌بندی">
 
-<label for="cat">دسته‌بندی</label>
-<input
-  id="cat"
-  required
-  placeholder="مثلاً عطر و ادکلن"
->
+<label>قیمت جدید</label>
+<input id="price" required type="number" min="0" placeholder="قیمت جدید">
 
+<label>قیمت قبلی (اختیاری)</label>
+<input id="old_price" type="number" min="0" placeholder="قیمت قبلی (اختیاری)">
 
-<label for="price">قیمت جدید</label>
-<input
-  id="price"
-  required
-  type="number"
-  min="0"
-  placeholder="مثلاً 890000"
->
+<label>ایموجی (اختیاری)</label>
+<input id="icon" placeholder="ایموجی">
 
-
-<label for="old_price">قیمت قبلی (اختیاری)</label>
-<input
-  id="old_price"
-  type="number"
-  min="0"
-  placeholder="مثلاً 1200000"
->
-
-
-<label for="icon">ایموجی (اختیاری)</label>
-<input
-  id="icon"
-  placeholder="مثلاً 🌸"
->
-
-
-<button type="submit">
-افزودن
-</button>
+<button type="submit">افزودن</button>
 
 </form>
 
 </section>
-
 
 <section class="box">
 
@@ -120,7 +83,6 @@
 <div id="products"></div>
 
 </section>
-
 
 <section class="box">
 
