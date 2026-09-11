@@ -171,9 +171,19 @@ async function login(){
 function saleText(p){
   const old=Number(p.old_price||0);
   const now=Number(p.price||0);
+
   if(old>now){
-    return `<span class="oldprice">${money(old)}</span><span class="newprice">${money(now)}</span>`;
+    const percent=Math.round(((old-now)/old)*100);
+
+    return `
+      <span style="display:inline-block;background:#e91e63;color:#fff;padding:4px 9px;border-radius:8px;font-size:12px;font-weight:bold;margin-left:8px">
+        ${percent}٪ تخفیف
+      </span>
+      <span class="oldprice">${money(old)}</span>
+      <span class="newprice">${money(now)}</span>
+    `;
   }
+
   return `<span class="newprice">${money(now)}</span>`;
 }
 
