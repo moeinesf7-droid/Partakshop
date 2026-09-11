@@ -16,7 +16,7 @@ function escapeHtml(value) {
 }
 
 function login() {
-  key = $("key").value.trim();
+  key = $("adminKey").value.trim();
 
   if (!key) {
     alert("کلید مدیریت را وارد کنید");
