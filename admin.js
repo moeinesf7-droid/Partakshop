@@ -1,321 +1,546 @@
 let key = "";
 let editingId = null;
 
+const $ = (id) => document.getElementById(id);
 
-/* =========================
-   ابزارهای کمکی
-========================= */
+const money = (value) => {
+  const n = Number(value || 0);
+  return n.toLocaleString("fa-IR");
+};
 
-const $ = id => document.getElementById(id);
+function showMessage(message, type = "info") {
+  let box = $("adminMessage");
 
-const money = value =>
-  Number(value || 0).toLocaleString("fa-IR");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "adminMessage";
+    box.style.cssText = `
+      margin:12px 0;
+      padding:12px;
+      border-radius:12px;
+      text-align:center;
+      font-size:14px;
+    `;
 
+    const form = document.querySelector("form");
+    if (form) {
+      form.parentNode.insertBefore(box, form);
+    } else {
+      document.body.prepend(box);
+    }
+  }
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  box.textContent = message;
+
+  if (type === "error") {
+    box.style.background = "#ffe5e5";
+    box.style.color = "#a00000";
+  } else if (type === "success") {
+    box.style.background = "#e5f8e9";
+    box.style.color = "#176b2c";
+  } else {
+    box.style.background = "#eeeeee";
+    box.style.color = "#333";
+  }
 }
 
 
 /* =========================
-   ورود به پنل مدیریت
+   ورود مدیر
 ========================= */
 
-function login() {
-
+async function login() {
   const input = $("adminKey");
 
   if (!input) {
-    alert("فیلد کلید مدیریت پیدا نشد");
+    alert("کادر کلید مدیر پیدا نشد.");
     return;
   }
 
   key = input.value.trim();
 
   if (!key) {
-    alert("کلید مدیریت را وارد کنید");
+    $("loginMsg").textContent = "کلید مدیر را وارد کنید";
     return;
   }
 
-  load();
-}
-
-
-/* =========================
-   دریافت اطلاعات پنل
-========================= */
-
-async function load() {
-
   try {
-
     const res = await fetch("/api/admin", {
       method: "GET",
-
       headers: {
         "x-admin-key": key
-      }
+      },
+      cache: "no-store"
     });
 
-
     if (!res.ok) {
-
-      alert("کلید مدیریت صحیح نیست");
-
+      $("loginMsg").textContent = "کلید مدیر نادرست است";
       return;
     }
 
-
     const data = await res.json();
 
-$("panel").hidden = false;
+    if ($("panel")) {
+      $("panel").hidden = false;
+    }
 
-render(data);
+    $("loginMsg").textContent = "ورود موفق";
 
+    render(data);
+
+    showMessage("پنل مدیریت آماده است", "success");
 
   } catch (err) {
-
     console.error(err);
-
-    alert("خطا در ارتباط با سرور");
+    $("loginMsg").textContent = "ارتباط با سرور برقرار نشد";
   }
 }
 
 
 /* =========================
-   نمایش محصولات و سفارش‌ها
+   دریافت اطلاعات
+========================= */
+
+async function load() {
+  if (!key) return false;
+
+  try {
+    const res = await fetch("/api/admin", {
+      method: "GET",
+      headers: {
+        "x-admin-key": key
+      },
+      cache: "no-store"
+    });
+
+    if (!res.ok) {
+      showMessage("دریافت اطلاعات از سرور انجام نشد", "error");
+      return false;
+    }
+
+    const data = await res.json();
+
+    render(data);
+
+    return true;
+
+  } catch (err) {
+    console.error(err);
+    showMessage("خطا در ارتباط با سرور", "error");
+    return false;
+  }
+}
+
+
+/* =========================
+   نمایش اطلاعات
 ========================= */
 
 function render(data) {
+  const products = Array.isArray(data.products)
+    ? data.products
+    : [];
 
-  const products = data.products || [];
+  const orders = Array.isArray(data.orders)
+    ? data.orders
+    : [];
 
-  const orders = data.orders || [];
+
+  /* تعداد محصولات */
+
+  const productCount =
+    $("productCount") ||
+    $("productsCount") ||
+    $("statProducts");
+
+  if (productCount) {
+    productCount.textContent = products.length;
+  }
 
 
-  /* =====================
-     محصولات
-  ===================== */
+  /* تعداد سفارش */
+
+  const orderCount =
+    $("orderCount") ||
+    $("ordersCount") ||
+    $("statOrders");
+
+  if (orderCount) {
+    orderCount.textContent = orders.length;
+  }
+
+
+  /* فروش */
+
+  let totalSales = 0;
+
+  orders.forEach(order => {
+    const status = String(order.status || "");
+
+    if (
+      status.includes("تکمیل") ||
+      status.includes("پرداخت") ||
+      status === "completed"
+    ) {
+      totalSales += Number(order.total || 0);
+    }
+  });
+
+  const salesBox =
+    $("sales") ||
+    $("salesTotal") ||
+    $("statSales");
+
+  if (salesBox) {
+    salesBox.innerHTML =
+      `${money(totalSales)}<br><span style="font-size:14px">تومان</span>`;
+  }
+
+
+  /* محصولات */
 
   const productsBox = $("products");
 
   if (productsBox) {
 
-    productsBox.innerHTML = products
-      .map(product => {
+    if (products.length === 0) {
+      productsBox.innerHTML = `
+        <div style="
+          text-align:center;
+          padding:25px;
+          color:#777;
+        ">
+          هنوز محصولی ثبت نشده است.
+        </div>
+      `;
+    } else {
 
-        const oldPrice =
-          product.old_price &&
-          Number(product.old_price) > Number(product.price)
-            ? `
-              <del style="
-                color:#999;
-                margin-left:6px;
-              ">
-                ${money(product.old_price)} تومان
-              </del>
-            `
-            : "";
+      productsBox.innerHTML = products.map(product => {
 
+        const icon = product.icon || "🛍️";
 
         return `
-          <div
-            class="product"
-            style="
+          <div style="
+            background:#fff;
+            border:1px solid #eee;
+            border-radius:16px;
+            padding:16px;
+            margin:12px 0;
+          ">
+
+            <div style="
               display:flex;
-              justify-content:space-between;
               align-items:center;
+              justify-content:space-between;
               gap:10px;
-              margin:10px 0;
-              padding:12px;
-              border:1px solid #eee;
-              border-radius:12px;
-            "
-          >
+            ">
 
-            <span>
+              <div>
+                <div style="
+                  font-size:18px;
+                  font-weight:bold;
+                  margin-bottom:8px;
+                ">
+                  ${escapeHtml(icon)}
+                  ${escapeHtml(product.name || "")}
+                </div>
 
-              ${escapeHtml(product.icon || "🛍️")}
+                <div style="
+                  color:#777;
+                  margin-bottom:8px;
+                ">
+                  ${escapeHtml(product.cat || "")}
+                </div>
 
-              <b>
-                ${escapeHtml(product.name)}
-              </b>
+                <div style="
+                  font-weight:bold;
+                ">
+                  ${money(product.price)}
+                  تومان
+                </div>
+              </div>
 
-              <br>
-
-              <small>
-
-                ${escapeHtml(product.cat || "")}
-
-                •
-                
-                ${oldPrice}
-
-                <strong>
-                  ${money(product.price)} تومان
-                </strong>
-
-              </small>
-
-            </span>
-
-
-            <span
-              style="
+              <div style="
                 display:flex;
-                gap:6px;
-                flex-wrap:wrap;
-              "
-            >
+                flex-direction:column;
+                gap:8px;
+              ">
 
-              <button
-                type="button"
-                onclick="editProduct(${product.id})"
-                style="
-                  background:#ff8fab;
-                  color:white;
-                  border:0;
-                  border-radius:8px;
-                  padding:7px 12px;
-                "
-              >
-                ویرایش
-              </button>
+                <button
+                  type="button"
+                  onclick="editProduct(${Number(product.id)})"
+                  style="
+                    padding:9px 14px;
+                    border:0;
+                    border-radius:10px;
+                    cursor:pointer;
+                  "
+                >
+                  ویرایش
+                </button>
 
+                <button
+                  type="button"
+                  onclick="deleteProduct(${Number(product.id)})"
+                  style="
+                    padding:9px 14px;
+                    border:0;
+                    border-radius:10px;
+                    cursor:pointer;
+                  "
+                >
+                  حذف
+                </button>
 
-              <button
-                type="button"
-                onclick="del(${product.id})"
-                style="
-                  background:#e74c3c;
-                  color:white;
-                  border:0;
-                  border-radius:8px;
-                  padding:7px 12px;
-                "
-              >
-                حذف
-              </button>
+              </div>
 
-            </span>
+            </div>
 
           </div>
         `;
 
-      })
-      .join("");
+      }).join("");
+    }
   }
 
 
-  /* =====================
+  /* =========================
      سفارش‌ها
-  ===================== */
+  ========================= */
 
-  const ordersBox = $("orders");
+  const ordersBox =
+    $("orders") ||
+    $("recentOrders");
 
   if (ordersBox) {
 
-    ordersBox.innerHTML = orders
-      .map(order => {
+    if (orders.length === 0) {
+
+      ordersBox.innerHTML = `
+        <div style="
+          text-align:center;
+          padding:25px;
+          color:#777;
+        ">
+          هنوز سفارشی ثبت نشده است.
+        </div>
+      `;
+
+    } else {
+
+      ordersBox.innerHTML = orders.map(order => {
 
         return `
-          <div
-            class="order"
-            style="
-              padding:12px;
-              margin:10px 0;
-              border:1px solid #eee;
-              border-radius:12px;
-            "
-          >
+          <div style="
+            background:#fff;
+            border:1px solid #eee;
+            border-radius:16px;
+            padding:15px;
+            margin:10px 0;
+          ">
 
-            <b>
-              کد سفارش:
-              ${escapeHtml(order.code)}
-            </b>
+            <div>
+              <strong>
+                ${escapeHtml(order.code || "")}
+              </strong>
+            </div>
 
-            <br>
-
-            <small>
-
+            <div>
               ${escapeHtml(order.name || "")}
+            </div>
 
-              •
+            <div>
+              ${money(order.total)}
+              تومان
+            </div>
 
-              ${escapeHtml(order.phone || "")}
-
-            </small>
-
-            <br>
-
-            <strong>
-              ${money(order.total)} تومان
-            </strong>
-
-            <br><br>
-
-
-            <select
-              onchange="
-                changeOrderStatus(
-                  '${escapeHtml(order.code)}',
-                  this.value
-                )
-              "
-            >
-
-              <option
-                value="در انتظار بررسی"
-                ${order.status === "در انتظار بررسی" ? "selected" : ""}
-              >
-                در انتظار بررسی
-              </option>
-
-
-              <option
-                value="تایید شده"
-                ${order.status === "تایید شده" ? "selected" : ""}
-              >
-                تایید شده
-              </option>
-
-
-              <option
-                value="در حال ارسال"
-                ${order.status === "در حال ارسال" ? "selected" : ""}
-              >
-                در حال ارسال
-              </option>
-
-
-              <option
-                value="تحویل شده"
-                ${order.status === "تحویل شده" ? "selected" : ""}
-              >
-                تحویل شده
-              </option>
-
-
-              <option
-                value="لغو شده"
-                ${order.status === "لغو شده" ? "selected" : ""}
-              >
-                لغو شده
-              </option>
-
-            </select>
+            <div style="
+              margin-top:8px;
+              color:#777;
+            ">
+              وضعیت:
+              ${escapeHtml(order.status || "در انتظار بررسی")}
+            </div>
 
           </div>
         `;
 
-      })
-      .join("");
+      }).join("");
+    }
   }
+}
+
+
+/* =========================
+   افزودن / ویرایش محصول
+========================= */
+
+const form = document.querySelector("form");
+
+if (form) {
+
+  form.addEventListener("submit", async function(e) {
+
+    e.preventDefault();
+
+    if (!key) {
+      alert("ابتدا وارد پنل مدیریت شوید.");
+      return;
+    }
+
+    const nameInput = $("name");
+    const catInput = $("cat");
+    const priceInput = $("price");
+    const iconInput = $("icon");
+
+    const name = nameInput
+      ? nameInput.value.trim()
+      : "";
+
+    const cat = catInput
+      ? catInput.value.trim()
+      : "";
+
+    const price = priceInput
+      ? Number(priceInput.value)
+      : 0;
+
+    const icon = iconInput
+      ? iconInput.value.trim()
+      : "";
+
+
+    if (!name) {
+      alert("نام محصول را وارد کنید.");
+      return;
+    }
+
+    if (!cat) {
+      alert("دسته‌بندی را وارد کنید.");
+      return;
+    }
+
+    if (!Number.isFinite(price) || price <= 0) {
+      alert("قیمت را درست وارد کنید.");
+      return;
+    }
+
+
+    const productData = {
+      name: name,
+      cat: cat,
+      price: price,
+      icon: icon
+    };
+
+
+    try {
+
+      let res;
+
+      /* ویرایش */
+
+      if (editingId) {
+
+        res = await fetch(
+          "/api/products?id=" + encodeURIComponent(editingId),
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "x-admin-key": key
+            },
+            body: JSON.stringify(productData)
+          }
+        );
+
+      }
+
+      /* افزودن محصول جدید */
+
+      else {
+
+        res = await fetch(
+          "/api/products",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-admin-key": key
+            },
+            body: JSON.stringify(productData)
+          }
+        );
+
+      }
+
+
+      const text = await res.text();
+
+      let result = {};
+
+      try {
+        result = JSON.parse(text);
+      } catch (_) {}
+
+
+      if (!res.ok) {
+
+        console.error(
+          "API ERROR:",
+          res.status,
+          result
+        );
+
+        alert(
+          result.error ||
+          `خطا در ثبت محصول (${res.status})`
+        );
+
+        return;
+      }
+
+
+      /* موفق */
+
+      showMessage(
+        editingId
+          ? "محصول با موفقیت ویرایش شد ✅"
+          : "محصول با موفقیت اضافه شد ✅",
+        "success"
+      );
+
+
+      editingId = null;
+
+
+      form.reset();
+
+
+      const button =
+        form.querySelector(
+          "button[type='submit']"
+        );
+
+      if (button) {
+        button.textContent = "افزودن محصول";
+      }
+
+
+      await load();
+
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert(
+        "خطا در ارتباط با سرور.\nلطفاً دوباره امتحان کنید."
+      );
+
+    }
+
+  });
 }
 
 
@@ -327,137 +552,68 @@ async function editProduct(id) {
 
   try {
 
-    const res = await fetch("/api/admin", {
-      method: "GET",
-
-      headers: {
-        "x-admin-key": key
-      }
+    const res = await fetch("/api/products", {
+      cache: "no-store"
     });
 
-
     if (!res.ok) {
-
-      alert("دسترسی مدیریت منقضی شده است");
-
+      alert("دریافت محصولات انجام نشد.");
       return;
     }
-
 
     const data = await res.json();
 
+    const products =
+      Array.isArray(data.products)
+        ? data.products
+        : [];
 
     const product =
-      (data.products || [])
-        .find(
-          item =>
-            Number(item.id) === Number(id)
-        );
-
+      products.find(
+        p => Number(p.id) === Number(id)
+      );
 
     if (!product) {
-
-      alert("محصول پیدا نشد");
-
+      alert("محصول پیدا نشد.");
       return;
     }
 
 
-    editingId = product.id;
+    if ($("name")) {
+      $("name").value =
+        product.name || "";
+    }
+
+    if ($("cat")) {
+      $("cat").value =
+        product.cat || "";
+    }
+
+    if ($("price")) {
+      $("price").value =
+        product.price || "";
+    }
+
+    if ($("icon")) {
+      $("icon").value =
+        product.icon || "";
+    }
 
 
-    /* نام */
-
-    $("name").value =
-      product.name || "";
+    editingId = id;
 
 
-    /* دسته‌بندی */
-
-    $("cat").value =
-      product.cat || "";
-
-
-    /*
-      قیمت جدید
-      این همان قیمت فروش فعلی است
-    */
-
-    $("price").value =
-      product.price ?? "";
-
-
-    /*
-      قیمت قبلی
-      اختیاری است
-    */
-
-    $("old_price").value =
-      product.old_price ?? "";
-
-
-    /* ایموجی */
-
-    $("icon").value =
-      product.icon || "";
-
-
-    /* تغییر متن دکمه */
-
-    const submitButton =
-      document.querySelector(
-        "form button[type='submit']"
+    const button =
+      form &&
+      form.querySelector(
+        "button[type='submit']"
       );
 
-
-    if (submitButton) {
-
-      submitButton.textContent =
-        "ذخیره تغییرات";
+    if (button) {
+      button.textContent =
+        "ذخیره ویرایش";
     }
 
-
-    /* ساخت دکمه لغو */
-
-    let cancelButton =
-      $("cancelEdit");
-
-
-    if (!cancelButton) {
-
-      cancelButton =
-        document.createElement("button");
-
-
-      cancelButton.id =
-        "cancelEdit";
-
-
-      cancelButton.type =
-        "button";
-
-
-      cancelButton.textContent =
-        "لغو ویرایش";
-
-
-      cancelButton.style.marginRight =
-        "8px";
-
-
-      cancelButton.onclick =
-        cancelEdit;
-
-
-      if (submitButton) {
-
-        submitButton.parentNode
-          .appendChild(cancelButton);
-      }
-    }
-
-
-    /* رفتن به بالای صفحه */
 
     window.scrollTo({
       top: 0,
@@ -469,52 +625,8 @@ async function editProduct(id) {
 
     console.error(err);
 
-    alert(
-      "خطا در دریافت اطلاعات محصول"
-    );
-  }
-}
+    alert("خطا در دریافت اطلاعات محصول.");
 
-
-/* =========================
-   لغو ویرایش
-========================= */
-
-function cancelEdit() {
-
-  editingId = null;
-
-
-  const form =
-    document.querySelector("form");
-
-
-  if (form) {
-
-    form.reset();
-  }
-
-
-  const submitButton =
-    document.querySelector(
-      "form button[type='submit']"
-    );
-
-
-  if (submitButton) {
-
-    submitButton.textContent =
-      "افزودن محصول";
-  }
-
-
-  const cancelButton =
-    $("cancelEdit");
-
-
-  if (cancelButton) {
-
-    cancelButton.remove();
   }
 }
 
@@ -523,395 +635,140 @@ function cancelEdit() {
    حذف محصول
 ========================= */
 
-async function del(id) {
+async function deleteProduct(id) {
 
-  if (
-    !confirm(
-      "آیا از حذف این محصول مطمئن هستید؟"
-    )
-  ) {
-
+  if (!key) {
+    alert("ابتدا وارد پنل مدیریت شوید.");
     return;
   }
+
+  const ok = confirm(
+    "آیا از حذف این محصول مطمئن هستید؟"
+  );
+
+  if (!ok) return;
 
 
   try {
 
     const res = await fetch(
-      "/api/products",
+      "/api/products?id=" +
+      encodeURIComponent(id),
       {
         method: "DELETE",
-
         headers: {
-          "Content-Type":
-            "application/json",
-
-          "x-admin-key":
-            key
-        },
-
-        body: JSON.stringify({
-          id: Number(id)
-        })
+          "x-admin-key": key
+        }
       }
     );
 
 
-    const data =
-      await res.json();
+    const text = await res.text();
+
+    let result = {};
+
+    try {
+      result = JSON.parse(text);
+    } catch (_) {}
 
 
     if (!res.ok) {
 
       alert(
-        data.error ||
-        "حذف محصول انجام نشد"
+        result.error ||
+        `حذف محصول انجام نشد (${res.status})`
       );
 
       return;
     }
 
 
-    alert(
-      "محصول حذف شد"
+    showMessage(
+      "محصول با موفقیت حذف شد ✅",
+      "success"
     );
 
 
-    load();
+    await load();
 
 
   } catch (err) {
 
     console.error(err);
 
-    alert(
-      "خطا در حذف محصول"
-    );
+    alert("خطا در حذف محصول.");
+
   }
 }
 
 
 /* =========================
-   افزودن / ویرایش محصول
+   امنیت نمایش متن
 ========================= */
 
-const form =
-  document.querySelector("form");
+function escapeHtml(value) {
+
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 
-
-if (form) {
-
-  form.onsubmit =
-    async function (e) {
-
-      e.preventDefault();
-
-
-      /* =====================
-         اطلاعات محصول
-      ===================== */
-
-      const name =
-        $("name").value.trim();
-
-
-      const cat =
-        $("cat").value.trim();
-
-
-      /*
-        قیمت جدید
-      */
-
-      const price =
-        Number(
-          $("price").value
-        );
-
-
-      /*
-        قیمت قبلی
-        اختیاری
-      */
-
-      const oldPriceText =
-        $("old_price").value.trim();
-
-
-      const old_price =
-        oldPriceText === ""
-          ? null
-          : Number(oldPriceText);
-
-
-      /*
-        ایموجی
-        اختیاری
-      */
-
-      const icon =
-        $("icon").value.trim();
-
-
-      /* =====================
-         بررسی نام
-      ===================== */
-
-      if (!name) {
-
-        alert(
-          "نام محصول را وارد کنید"
-        );
-
-        return;
-      }
-
-
-      /* =====================
-         بررسی قیمت جدید
-      ===================== */
-
-      if (
-        !Number.isFinite(price) ||
-        price <= 0
-      ) {
-
-        alert(
-          "قیمت جدید را درست وارد کنید"
-        );
-
-        return;
-      }
-
-
-      /* =====================
-         بررسی قیمت قبلی
-      ===================== */
-
-      if (
-        old_price !== null &&
-        (
-          !Number.isFinite(old_price) ||
-          old_price <= price
-        )
-      ) {
-
-        alert(
-          "قیمت قبلی باید بیشتر از قیمت جدید باشد"
-        );
-
-        return;
-      }
-
-
-      /* =====================
-         اطلاعات نهایی محصول
-      ===================== */
-
-      const productData = {
-
-        name: name,
-
-        cat: cat,
-
-        price: price,
-
-        old_price: old_price,
-
-        icon: icon
-      };
-
-
-      try {
-
-        let res;
-
-
-        /* =====================
-           ویرایش محصول
-        ===================== */
-
-        if (
-          editingId !== null
-        ) {
-
-          res =
-            await fetch(
-              "/api/products",
-              {
-                method: "PATCH",
-
-                headers: {
-                  "Content-Type":
-                    "application/json",
-
-                  "x-admin-key":
-                    key
-                },
-
-                body: JSON.stringify({
-
-                  id:
-                    Number(editingId),
-
-                  ...productData
-
-                })
-              }
-            );
-        }
-
-
-        /* =====================
-           افزودن محصول جدید
-        ===================== */
-
-        else {
-
-          res =
-            await fetch(
-              "/api/products",
-              {
-                method: "POST",
-
-                headers: {
-                  "Content-Type":
-                    "application/json",
-
-                  "x-admin-key":
-                    key
-                },
-
-                body:
-                  JSON.stringify(
-                    productData
-                  )
-              }
-            );
-        }
-
-
-        const data =
-          await res.json();
-
-
-        /* =====================
-           بررسی نتیجه
-        ===================== */
-
-        if (!res.ok) {
-
-          alert(
-            data.error ||
-            "ذخیره محصول انجام نشد"
-          );
-
-          return;
-        }
-
-
-        /* =====================
-           پیام موفقیت
-        ===================== */
-
-        if (
-          editingId !== null
-        ) {
-
-          alert(
-            "محصول با موفقیت ویرایش شد"
-          );
-
-        } else {
-
-          alert(
-            "محصول با موفقیت اضافه شد"
-          );
-        }
-
-
-        /* پاک کردن حالت ویرایش */
-
-        cancelEdit();
-
-
-        /* بارگذاری دوباره */
-
-        load();
-
-
-      } catch (err) {
-
-        console.error(err);
-
-        alert(
-          "خطا در ارتباط با سرور"
-        );
-      }
-    };
 }
 
 
 /* =========================
-   تغییر وضعیت سفارش
+   دکمه ورود
 ========================= */
 
-async function changeOrderStatus(
-  code,
-  status
-) {
+const loginButton =
+  document.querySelector(
+    "button[onclick='login()']"
+  );
 
-  try {
+if (loginButton) {
 
-    const res =
-      await fetch(
-        "/api/orders",
-        {
-          method: "PATCH",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            "x-admin-key":
-              key
-          },
-
-          body: JSON.stringify({
-
-            code: code,
-
-            status: status
-
-          })
-        }
-      );
-
-
-    const data =
-      await res.json();
-
-
-    if (!res.ok) {
-
-      alert(
-        data.error ||
-        "تغییر وضعیت سفارش انجام نشد"
-      );
-
-      return;
+  loginButton.addEventListener(
+    "click",
+    function() {
+      login();
     }
+  );
 
-
-    load();
-
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert(
-      "خطا در تغییر وضعیت سفارش"
-    );
-  }
 }
+
+
+/* =========================
+   نمایش تومان کنار قیمت
+========================= */
+
+const priceInput = $("price");
+
+if (priceInput) {
+
+  const parent = priceInput.parentElement;
+
+  if (
+    parent &&
+    !parent.querySelector(".price-unit")
+  ) {
+
+    const unit = document.createElement("span");
+
+    unit.className = "price-unit";
+
+    unit.textContent = "تومان";
+
+    unit.style.cssText = `
+      margin-right:8px;
+      font-weight:bold;
+      white-space:nowrap;
+    `;
+
+    parent.style.display = "flex";
+    parent.style.alignItems = "center";
+
+    parent.appendChild(unit);
+  }
+                               }
