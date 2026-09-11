@@ -73,7 +73,9 @@ async function load() {
 
     const data = await res.json();
 
-    render(data);
+$("panel").hidden = false;
+
+render(data);
 
 
   } catch (err) {
