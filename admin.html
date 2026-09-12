@@ -118,6 +118,18 @@ button{background:#241d24;color:#fff;border:0;cursor:pointer}
 </section>
 
 <section class="box">
+<h2>کدهای تخفیف 🎁</h2>
+<form id="couponForm" class="form-grid" style="margin-bottom:18px">
+<div class="field"><label>کد تخفیف</label><input id="couponCodeAdmin" required placeholder="مثلاً PARTAK10" style="text-transform:uppercase"></div>
+<div class="field"><label>نوع تخفیف</label><select id="couponType"><option value="percent">درصدی</option><option value="fixed">مبلغ ثابت</option></select></div>
+<div class="field"><label>مقدار</label><input id="couponValue" required type="number" min="1" inputmode="numeric" placeholder="مثلاً 10"></div>
+<div class="field"><label>حداکثر استفاده <span class="muted">(اختیاری)</span></label><input id="couponMaxUses" type="number" min="1" inputmode="numeric" placeholder="خالی = نامحدود"></div>
+<div class="field"><label>تاریخ انقضا <span class="muted">(اختیاری)</span></label><input id="couponExpires" type="datetime-local"></div>
+<div class="actions full"><button type="submit" id="couponBtn">ساخت کد تخفیف</button></div>
+</form><div id="couponMsg" class="msg"></div><div id="coupons">در حال دریافت...</div>
+</section>
+
+<section class="box">
 <h2>آخرین سفارش‌ها</h2>
 <div id="orders">در حال دریافت...</div>
 </section>
@@ -213,6 +225,8 @@ function render(){
       </div>
     </div>
   `).join(""):"<p class='muted'>محصولی ثبت نشده است.</p>";
+
+  renderCoupons();
 
   $("orders").innerHTML=os.length?os.map(o=>`
     <div class="order">
@@ -325,6 +339,12 @@ $("form").onsubmit=async e=>{
     $("submitBtn").disabled=false;
   }
 };
+
+function couponText(c){return c.type==="percent"?Number(c.value)+"٪":money(c.value)}
+function renderCoupons(){const cs=data.coupons||[];$("coupons").innerHTML=cs.length?cs.map(c=>`<div class="product"><div class="prow"><div><div class="ptitle">🎁 ${esc(c.code)}</div><div class="meta">تخفیف: <b>${couponText(c)}</b> • استفاده: ${Number(c.uses||0)}${c.max_uses?" از "+c.max_uses:""}<br>${c.expires_at?"انقضا: "+esc(c.expires_at):"بدون تاریخ انقضا"} • ${Number(c.active)===1?"فعال":"غیرفعال"}</div></div><div class="pbuttons"><button type="button" onclick="toggleCoupon('${esc(c.code)}',${Number(c.active)===1?'false':'true'})">${Number(c.active)===1?'غیرفعال کردن':'فعال کردن'}</button><button class="delete" type="button" onclick="deleteCoupon('${esc(c.code)}')">حذف</button></div></div></div>`).join(""):"<p class='muted'>هنوز کد تخفیفی ساخته نشده است.</p>"}
+async function toggleCoupon(code,active){try{await api('/api/coupons',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,active})});await load()}catch(e){alert(e.message)}}
+async function deleteCoupon(code){if(!confirm('این کد تخفیف حذف شود؟'))return;try{await api('/api/coupons?code='+encodeURIComponent(code),{method:'DELETE'});await load()}catch(e){alert(e.message)}}
+$("couponForm").onsubmit=async e=>{e.preventDefault();const type=$("couponType").value,value=Number($("couponValue").value),max=$("couponMaxUses").value.trim();let expires=$("couponExpires").value;if(!$("couponCodeAdmin").value.trim()||!Number.isFinite(value)||value<=0||(type==='percent'&&value>100))return msg($("couponMsg"),"اطلاعات کد تخفیف نامعتبر است");if(expires)expires=new Date(expires).toISOString();try{$("couponBtn").disabled=true;await api('/api/coupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:$("couponCodeAdmin").value,type,value,max_uses:max,expires_at:expires,active:true})});e.target.reset();msg($("couponMsg"),"کد تخفیف با موفقیت ساخته شد ✅",true);await load()}catch(e){msg($("couponMsg"),e.message||"ساخت کد انجام نشد")}finally{$("couponBtn").disabled=false}};
 
 async function deleteProduct(id){
   if(!confirm("این محصول حذف شود؟"))return;
