@@ -114,6 +114,20 @@ button{background:#241d24;color:#fff;border:0;cursor:pointer}
 
 <section class="box">
 <h2>محصولات</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+  <input id="productSearch" placeholder="جستجوی نام محصول...">
+  <select id="productFilter">
+    <option value="all">همه محصولات</option>
+    <option value="active">فقط فعال</option>
+    <option value="inactive">فقط غیرفعال</option>
+    <option value="discount">فقط تخفیف‌دار</option>
+  </select>
+</div>
+<div class="actions" style="margin-bottom:12px">
+  <button type="button" onclick="sortProducts('new')">جدیدترین</button>
+  <button type="button" onclick="sortProducts('priceLow')">ارزان‌ترین</button>
+  <button type="button" onclick="sortProducts('priceHigh')">گران‌ترین</button>
+</div>
 <div id="products">در حال دریافت...</div>
 </section>
 
@@ -199,35 +213,65 @@ function saleText(p){
   return `<span class="newprice">${money(now)}</span>`;
 }
 
+function productIsDiscounted(p){
+  return Number(p.old_price||0)>Number(p.price||0);
+}
+let productSort="new";
+
+function sortProducts(mode){
+  productSort=mode;
+  renderProducts();
+}
+
+function renderProducts(){
+  const all=[...(data.products||[])];
+  const q=($("productSearch")?.value||"").trim().toLowerCase();
+  const filter=$("productFilter")?.value||"all";
+  let ps=all.filter(p=>{
+    const name=String(p.name||"").toLowerCase();
+    const active=Number(p.active)===1;
+    const disc=productIsDiscounted(p);
+    if(q && !name.includes(q))return false;
+    if(filter==="active" && !active)return false;
+    if(filter==="inactive" && active)return false;
+    if(filter==="discount" && !disc)return false;
+    return true;
+  });
+  if(productSort==="priceLow") ps.sort((a,b)=>Number(a.price||0)-Number(b.price||0));
+  else if(productSort==="priceHigh") ps.sort((a,b)=>Number(b.price||0)-Number(a.price||0));
+  else ps.sort((a,b)=>Number(b.id||0)-Number(a.id||0));
+  $("products").innerHTML=ps.length?ps.map(p=>{
+    const active=Number(p.active)===1;
+    const disc=productIsDiscounted(p);
+    return `
+      <div class="product">
+        <div class="prow">
+          <div style="min-width:0">
+            <div class="ptitle">${esc(p.icon||"🛍️")} ${esc(p.name)}</div>
+            <div class="meta">
+              دسته‌بندی: ${esc(p.cat)}<br>
+              قیمت: ${saleText(p)}<br>
+              وضعیت: <b>${active?"فعال ✅":"غیرفعال ⛔"}</b>
+              ${disc?"<br>محصول دارای تخفیف اختصاصی است.":""}
+            </div>
+          </div>
+          <div class="pbuttons">
+            <button type="button" onclick="editProduct(${p.id})">ویرایش</button>
+            <button type="button" onclick="toggleProduct(${p.id},${active?"false":"true"})">${active?"غیرفعال کردن":"فعال کردن"}</button>
+            <button class="delete" type="button" onclick="deleteProduct(${p.id})">حذف</button>
+          </div>
+        </div>
+      </div>`;
+  }).join(""):"<p class='muted'>محصولی با این فیلتر پیدا نشد.</p>";
+}
+
 function render(){
   let ps=data.products||[],os=data.orders||[];
   $("items").textContent=ps.length.toLocaleString("fa-IR");
   $("ordersCount").textContent=os.length.toLocaleString("fa-IR");
-  $("sales").textContent=money(
-    os.filter(o=>o.status!=="لغو شد")
-      .reduce((a,o)=>a+Number(o.total||0),0)
-  );
-
-  $("products").innerHTML=ps.length?ps.map(p=>`
-    <div class="product">
-      <div class="prow">
-        <div>
-          <div class="ptitle">${esc(p.icon||"🛍️")} ${esc(p.name)}</div>
-          <div class="meta">
-            دسته‌بندی: ${esc(p.cat)}<br>
-            قیمت: ${saleText(p)}
-          </div>
-        </div>
-        <div class="pbuttons">
-          <button type="button" onclick="editProduct(${p.id})">ویرایش</button>
-          <button class="delete" type="button" onclick="deleteProduct(${p.id})">حذف</button>
-        </div>
-      </div>
-    </div>
-  `).join(""):"<p class='muted'>محصولی ثبت نشده است.</p>";
-
+  $("sales").textContent=money(os.filter(o=>o.status!=="لغو شد").reduce((a,o)=>a+Number(o.total||0),0));
+  renderProducts();
   renderCoupons();
-
   $("orders").innerHTML=os.length?os.map(o=>`
     <div class="order">
       <b>${esc(o.code)}</b> — ${esc(o.name)}<br>
@@ -346,6 +390,13 @@ async function toggleCoupon(code,active){try{await api('/api/coupons',{method:'P
 async function deleteCoupon(code){if(!confirm('این کد تخفیف حذف شود؟'))return;try{await api('/api/coupons?code='+encodeURIComponent(code),{method:'DELETE'});await load()}catch(e){alert(e.message)}}
 $("couponForm").onsubmit=async e=>{e.preventDefault();const type=$("couponType").value,value=Number($("couponValue").value),max=$("couponMaxUses").value.trim();let expires=$("couponExpires").value;if(!$("couponCodeAdmin").value.trim()||!Number.isFinite(value)||value<=0||(type==='percent'&&value>100))return msg($("couponMsg"),"اطلاعات کد تخفیف نامعتبر است");if(expires)expires=new Date(expires).toISOString();try{$("couponBtn").disabled=true;await api('/api/coupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:$("couponCodeAdmin").value,type,value,max_uses:max,expires_at:expires,active:true})});e.target.reset();msg($("couponMsg"),"کد تخفیف با موفقیت ساخته شد ✅",true);await load()}catch(e){msg($("couponMsg"),e.message||"ساخت کد انجام نشد")}finally{$("couponBtn").disabled=false}};
 
+async function toggleProduct(id,active){
+  try{
+    await api("/api/products?id="+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:!!active})});
+    await load();
+  }catch(e){alert(e.message)}
+}
+
 async function deleteProduct(id){
   if(!confirm("این محصول حذف شود؟"))return;
   try{
@@ -369,6 +420,8 @@ $("loginBtn").onclick=login;
 $("adminKey").onkeydown=e=>{if(e.key==="Enter")login()};
 $("cancelBtn").onclick=cancelEdit;
 $("hasDiscount").onchange=updateDiscountUI;
+$("productSearch").oninput=renderProducts;
+$("productFilter").onchange=renderProducts;
 
 let saved=sessionStorage.getItem("partak_admin_key");
 if(saved){
