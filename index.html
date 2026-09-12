@@ -62,7 +62,20 @@
 <div id="toast"></div>
 <div id="cart" class="overlay" onclick="if(event.target.id==='cart')closeCart()">
 <div class="modal"><button class="x" onclick="closeCart()">×</button><h2>سبد خرید</h2><div id="cartItems"></div>
-<div class="total">مجموع: <b id="total">۰ تومان</b></div>
+<div class="coupon-box">
+  <label for="couponCode">کد تخفیف</label>
+  <div class="coupon-row">
+    <input id="couponCode" type="text" placeholder="مثلاً PARTAK5" autocomplete="off">
+    <button type="button" onclick="applyCoupon()">اعمال</button>
+  </div>
+  <div id="couponMsg" class="coupon-msg"></div>
+  <button id="removeCouponBtn" type="button" class="remove-coupon" onclick="removeCoupon()" hidden>حذف کد تخفیف</button>
+</div>
+<div class="summary">
+  <div>مبلغ کالاها: <b id="subtotal">۰ تومان</b></div>
+  <div id="discountLine" hidden>تخفیف: <b id="discount">۰ تومان</b></div>
+  <div class="total">مبلغ نهایی: <b id="total">۰ تومان</b></div>
+</div>
 <button class="primary wide" onclick="checkout()">ادامه و ثبت اطلاعات سفارش</button></div></div>
 
 <div id="checkout" class="overlay" onclick="if(event.target.id==='checkout')closeCheckout()">
