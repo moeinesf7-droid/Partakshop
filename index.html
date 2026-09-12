@@ -20,7 +20,6 @@
   <a href="#home">خانه</a><a href="#categories">دسته‌بندی‌ها</a><a href="#products">محصولات</a>
   <a href="#orders">پیگیری سفارش</a><a href="#contact">تماس با ما</a>
 </nav>
-
 <main>
 <section id="home" class="hero">
   <div><span class="badge">فروشگاه رسمی پارتاک</span>
@@ -60,23 +59,31 @@
 </main>
 
 <div id="toast"></div>
+
 <div id="cart" class="overlay" onclick="if(event.target.id==='cart')closeCart()">
-<div class="modal"><button class="x" onclick="closeCart()">×</button><h2>سبد خرید</h2><div id="cartItems"></div>
+<div class="modal">
+<button class="x" onclick="closeCart()">×</button>
+<h2>سبد خرید</h2>
+<div id="cartItems"></div>
+
 <div class="coupon-box">
   <label for="couponCode">کد تخفیف</label>
   <div class="coupon-row">
     <input id="couponCode" type="text" placeholder="مثلاً PARTAK5" autocomplete="off">
     <button type="button" onclick="applyCoupon()">اعمال</button>
   </div>
+  <div class="coupon-note">کد تخفیف فقط روی محصولاتی اعمال می‌شود که تخفیف خودِ محصول ندارند.</div>
   <div id="couponMsg" class="coupon-msg"></div>
   <button id="removeCouponBtn" type="button" class="remove-coupon" onclick="removeCoupon()" hidden>حذف کد تخفیف</button>
 </div>
+
 <div class="summary">
   <div>مبلغ کالاها: <b id="subtotal">۰ تومان</b></div>
-  <div id="discountLine" hidden>تخفیف: <b id="discount">۰ تومان</b></div>
+  <div id="discountLine" hidden>تخفیف کد: <b id="discount">۰ تومان</b></div>
   <div class="total">مبلغ نهایی: <b id="total">۰ تومان</b></div>
 </div>
-<button class="primary wide" onclick="checkout()">ادامه و ثبت اطلاعات سفارش</button></div></div>
+<button class="primary wide" onclick="checkout()">ادامه و ثبت اطلاعات سفارش</button>
+</div></div>
 
 <div id="checkout" class="overlay" onclick="if(event.target.id==='checkout')closeCheckout()">
 <div class="modal"><button class="x" onclick="closeCheckout()">×</button><h2>ثبت سفارش</h2>
@@ -85,7 +92,8 @@
 <input id="customerPhone" required inputmode="tel" placeholder="شماره موبایل">
 <textarea id="customerAddress" required placeholder="آدرس کامل"></textarea>
 <select id="payment"><option value="cod">پرداخت هنگام تحویل (آزمایشی)</option><option value="online">پرداخت آنلاین (پس از اتصال درگاه)</option></select>
-<button class="primary wide">ثبت سفارش</button></form>
+<button class="primary wide">ثبت سفارش</button>
+</form>
 <p class="note">پرداخت آنلاین در این نسخه هنوز به درگاه بانکی متصل نیست.</p>
 </div></div>
 
